@@ -1,0 +1,121 @@
+
+<div class="row row-flex box-me">
+    <div class="col-xs-12 text-center">
+        <h1>HEADER 1</h1>
+    </div>
+    <div class="col-xs-4 text-center">
+        <h2>CHANNEL 1</h2>
+        <div class="gauge-box">
+            <div data-labelheight="10"
+            style="height: 170px; background: transparent; margin: 0 auto;"
+            id="gauge-channel_1"
+            data-chart="solidgauge"
+            data-nodename="{{cookiecutter.driver_name}}.channel_1"
+            data-units="UNITS"
+            data-min="0"
+            data-max="100"
+            data-decimalplaces="2"
+            data-colors="0.1:#DF5353,0.5:#DDDF0D,0.9:#55BF3B"
+            data-valuefontsize="18px">
+            </div>
+            <div class- "timestamp-box">
+                <a href="#" data-channelId="<%= channels['{{cookiecutter.driver_name}}.channel_1'].channelId %>" class="data-table" title="Download Channel History">
+                    <i class="fa fa-download"></i>
+                </a>
+            </div>
+            <span data-timeupdate="lt11_level">
+                <%= channels["{{cookiecutter.driver_name}}.channel_1"].timestamp %>
+            </span>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+<style>
+
+.box-me {
+    position: relative;
+    padding: 0.5em;
+    padding-bottom: 1.5em;
+    border: 1px solid #eee;
+    /*margin: 1em 0;*/
+}
+
+.box-me .gauge-box {
+    margin-top: -0.25em;
+}
+
+.pad15 {
+    margin: 15px 15px;
+}
+
+.box-me h2 {
+    text-transform: uppercase;
+    font-size: 14px;
+    color: #666;
+    font-weight: 400;
+    letter-spacing: 1px;
+    z-index: 100;
+}
+
+.dynamic-chart-form {
+    background-color: whiteSmoke;
+    padding: 1em 0.5em;
+    margin-top: 1em;
+}
+
+.row-flex {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: -ms-flexbox;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.row-flex > [class*='col-'] {
+    display: flex;
+    flex-direction: column;
+}
+
+#systemStatusTimelineContainer h2 {
+    text-transform: uppercase;
+    font-size: 14px;
+    color: #666;
+    font-weight: 400;
+    letter-spacing: 1px;
+    z-index: 100;
+}
+
+.slice.node-detail hr {
+    border-color: #ccc;
+}
+.slice.node-detail #alarms li {
+    margin-bottom: 1em;
+    padding: 0.5em;
+}
+.slice.node-detail #alarms li:nth-child(even){
+    background-color: whiteSmoke;
+}
+.slice.node-detail #alarms li span {
+    margin-left: 1em;
+    color: #aaa;
+}
+</style>
+
+<script>
+
+$('.val_box').each(function(topLevel){
+    $(this).change(function(){
+        var id = "#" + $(this).closest(".entry-top-level").attr('id');
+        if (id !== "#undefined"){
+            var val = $(id).find('.val_box').val();
+            var tag = $(id).find('.setstatic').attr('data-staticsend', val);
+            console.log($(id).find('.setstatic').attr('data-staticsend'));
+        }
+    });
+});
+
+</script>

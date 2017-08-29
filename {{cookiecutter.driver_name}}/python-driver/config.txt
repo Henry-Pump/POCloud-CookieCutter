@@ -1,0 +1,14 @@
+{
+
+"driverFileName":"{{cookiecutter.driver_name}}.py",
+"deviceName":"{{cookiecutter.driver_name}}",
+"driverId":"{{cookiecutter.driver_id}}",
+"releaseVersion":"1",
+"files": {
+	"file1":"{{cookiecutter.driver_name}}.py",
+	"file2":"Channel.py",
+	"file3":"Maps.py",
+	"file4":"Scheduler.py"
+	}
+
+}

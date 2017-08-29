@@ -1,0 +1,15 @@
+<a href="#"
+    data-channelId="<%= channels["{{cookiecutter.driver_name}}.log"].channelId %>"
+    class="data-table btn-block btn btn-theme animated"
+    title="Device Log"><i style='margin-left: 0.5em; cursor: pointer' class="fa fa-th-list icon-theme"></i> Device Log</a>
+
+<a href="#"
+    data-refreshpause="1"
+    data-staticsend="1"
+    data-channelId="<%= channels["{{cookiecutter.driver_name}}.sync"].channelId %>"
+    data-techname="<%=channels["{{cookiecutter.driver_name}}.sync"].techName %>"
+    data-name="<%= channels["{{cookiecutter.driver_name}}.sync"].name%>"
+    data-nodechannelcurrentId="<%= channels["{{cookiecutter.driver_name}}.sync"].nodechannelcurrentId %>"
+    id="<%= channels["{{cookiecutter.driver_name}}.sync"].channelId %>"
+    class="btn btn-large btn-block btn-theme animated setstatic mqtt">
+    <i class="icon-repeat icon-white mqtt" ></i>Sync All Data</a>
