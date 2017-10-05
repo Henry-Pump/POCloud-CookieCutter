@@ -1,0 +1,42 @@
+<div class="row row-flex box-me">
+    <div class="col-md-6 text-center">
+        <h2 class="uppercase">Public IP Address</h2>
+        <p><%= channels["{{cookiecutter.driver_name}}.public_ip_address"].value %><p>
+    </div>
+</div>
+
+<style>
+    .uppercase {
+        text-transform: uppercase;
+        font-size: 14px;
+        color: #666;
+        font-weight: 400;
+        letter-spacing: 1px;
+        z-index: 100;
+    }
+
+    .box-me {
+        position: relative;
+        padding: 0.5em;
+        padding-bottom: 1.5em;
+        border: 1px solid #eee;
+        /*margin: 1em 0;*/
+    }
+    .row-flex {
+        display: -webkit-box;
+        display: -webkit-flex;
+        display: -ms-flexbox;
+        display: flex;
+        flex-wrap: wrap;
+    }
+
+    .row-flex > [class*='col-'] {
+        display: flex;
+        flex-direction: column;
+    }
+
+    p {
+        font-size: 1.25em;
+    }
+
+</style>

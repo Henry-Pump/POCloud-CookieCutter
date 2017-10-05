@@ -6,6 +6,7 @@ from Channel import Channel, write_tag, BoolArrayChannels
 from Maps import {{cookiecutter.driver_name}}_map as maps
 import json
 import time
+import socket
 
 _ = None
 
@@ -25,6 +26,13 @@ def reverse_map(value, map_):
             return x
     return None
 
+def get_public_ip_address():
+    """Find the public IP Address of the host device."""
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    ip = s.getsockname()[0]
+    s.close()
+    return ip
 
 channels = []
 
@@ -38,7 +46,7 @@ class start(threading.Thread, deviceBase):
         deviceBase.__init__(self, name=name, number=number, mac=mac, Q=Q, mcu=mcu, companyId=companyId, offset=offset, mqtt=mqtt, Nodes=Nodes)
 
         self.daemon = True
-        self.version = "3"
+        self.version = "1"
         self.finished = threading.Event()
         self.forceSend = False
         threading.Thread.start(self)
@@ -58,18 +66,22 @@ class start(threading.Thread, deviceBase):
             print("{{cookiecutter.driver_name}} driver will start in {} seconds".format(wait_sec - i))
             time.sleep(1)
         print("BOOM! Starting {{cookiecutter.driver_name}} driver...")
-        # after its booted up assuming that M1 is now reading modbus data
-        # we can replace the reference made to this device name to the M1 driver with this
-        # driver. The 01 in the 0199 below is the device number you referenced in the modbus wizard
-        self.nodes["{{cookiecutter.driver_name}}_0199"] = self
+
+        public_ip_address = get_public_ip_address()
+        self.sendtodbDev(1, 'public_ip_address', public_ip_address, 0, '{{cookiecutter.driver_name}}')
+        watchdog = self.rigpump_watchdog()
+        self.sendtodbDev(1, 'watchdog', watchdog, 0, '{{cookiecutter.driver_name}}')
+
         send_loops = 0
+        watchdog_loops = 0
+        watchdog_check_after = 5000
         while True:
             if self.forceSend:
                 print "FORCE SEND: TRUE"
 
             for c in channels:
                 if c.read(self.forceSend):
-                    self.sendtodb(c.mesh_name, c.value, 0)
+                    self.sendtodbDev(1, c.mesh_name, c.value, 0, '{{cookiecutter.driver_name}}')
 
 
             # print("{{cookiecutter.driver_name}} driver still alive...")
@@ -80,6 +92,30 @@ class start(threading.Thread, deviceBase):
                     send_loops = 0
                 else:
                     send_loops += 1
+
+            watchdog_loops += 1
+            if (watchdog_loops >= watchdog_check_after):
+                test_watchdog = self.rigpump_watchdog()
+                if not test_watchdog == watchdog:
+                    self.sendtodbDev(1, 'watchdog', test_watchdog, 0, '{{cookiecutter.driver_name}}')
+                    watchdog = test_watchdog
+
+                test_public_ip = get_public_ip_address()
+                if not test_public_ip == public_ip_address:
+                    self.sendtodbDev(1, 'public_ip_address', test_public_ip, 0, '{{cookiecutter.driver_name}}')
+                    public_ip_address = test_public_ip
+                watchdog_loops = 0
+
+    def {{cookiecutter.driver_name}}_watchdog(self):
+        """Write a random integer to the PLC and then 1 seconds later check that it has been decremented by 1."""
+        randval = randint(0, 32767)
+        write_tag(str(PLC_IP_ADDRESS), 'watchdog_INT', randval)
+        time.sleep(1)
+        watchdog_val = read_tag(str(PLC_IP_ADDRESS), 'watchdog_INT')
+        try:
+            return (randval - 1) == watchdog_val[0]
+        except (KeyError, TypeError):
+            return False
 
     def {{cookiecutter.driver_name}}_sync(self, name, value):
         """Sync all data from the driver."""
