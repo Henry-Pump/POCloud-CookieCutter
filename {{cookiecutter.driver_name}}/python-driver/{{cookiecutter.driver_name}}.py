@@ -4,37 +4,21 @@ import threading
 from device_base import deviceBase
 from Channel import Channel, write_tag, BoolArrayChannels
 from Maps import {{cookiecutter.driver_name}}_map as maps
+from Maps import reverse_map
+import persistence
+from utilities import get_public_ip_address
 import json
 import time
-import socket
 
 _ = None
 
-try:
-    with open("persist.json", 'r') as persist_file:
-        persist = json.load(persist_file)
-except Exception:
-    persist = {}
+# GLOBAL VARIABLES
+WATCHDOG_SEND_PERIOD = 3600  # Seconds, the longest amount of time before sending the watchdog status
+PLC_IP_ADDRESS = "192.168.1.10"
+CHANNELS = []
 
-plc_ip_address = "192.168.1.10"
-
-
-def reverse_map(value, map_):
-    """Perform the opposite of mapping to an object."""
-    for x in map_:
-        if map_[x] == value:
-            return x
-    return None
-
-def get_public_ip_address():
-    """Find the public IP Address of the host device."""
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", 80))
-    ip = s.getsockname()[0]
-    s.close()
-    return ip
-
-channels = []
+# PERSISTENCE FILE
+persist = persistence.load()
 
 
 class start(threading.Thread, deviceBase):
@@ -71,6 +55,7 @@ class start(threading.Thread, deviceBase):
         self.sendtodbDev(1, 'public_ip_address', public_ip_address, 0, '{{cookiecutter.driver_name}}')
         watchdog = self.rigpump_watchdog()
         self.sendtodbDev(1, 'watchdog', watchdog, 0, '{{cookiecutter.driver_name}}')
+        watchdog_send_timestamp = time.time()
 
         send_loops = 0
         watchdog_loops = 0
@@ -79,7 +64,7 @@ class start(threading.Thread, deviceBase):
             if self.forceSend:
                 print "FORCE SEND: TRUE"
 
-            for c in channels:
+            for c in CHANNELS:
                 if c.read(self.forceSend):
                     self.sendtodbDev(1, c.mesh_name, c.value, 0, '{{cookiecutter.driver_name}}')
 
@@ -96,7 +81,7 @@ class start(threading.Thread, deviceBase):
             watchdog_loops += 1
             if (watchdog_loops >= watchdog_check_after):
                 test_watchdog = self.rigpump_watchdog()
-                if not test_watchdog == watchdog:
+                if not test_watchdog == watchdog or (time.time() - watchdog_send_timestamp) > WATCHDOG_SEND_PERIOD:
                     self.sendtodbDev(1, 'watchdog', test_watchdog, 0, '{{cookiecutter.driver_name}}')
                     watchdog = test_watchdog
 
@@ -128,7 +113,7 @@ class start(threading.Thread, deviceBase):
         new_val = json.loads(str(value).replace("'", '"'))
         tag_n = str(new_val['tag'])  # "cmd_Start"
         val_n = new_val['val']
-        w = write_tag(str(plc_ip_address), tag_n, val_n)
+        w = write_tag(str(PLC_IP_ADDRESS), tag_n, val_n)
         print("Result of {{cookiecutter.driver_name}}_writeplctag(self, {}, {}) = {}".format(name, value, w))
         if w is None:
             w = "Error writing to PLC..."
