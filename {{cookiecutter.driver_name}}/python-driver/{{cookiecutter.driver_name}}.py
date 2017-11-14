@@ -54,7 +54,7 @@ class start(threading.Thread, deviceBase):
 
         public_ip_address = get_public_ip_address()
         self.sendtodbDev(1, 'public_ip_address', public_ip_address, 0, '{{cookiecutter.driver_name}}')
-        watchdog = self.rigpump_watchdog()
+        watchdog = self.{{cookiecutter.driver_name}}_watchdog()
         self.sendtodbDev(1, 'watchdog', watchdog, 0, '{{cookiecutter.driver_name}}')
         watchdog_send_timestamp = time.time()
 
@@ -81,7 +81,7 @@ class start(threading.Thread, deviceBase):
 
             watchdog_loops += 1
             if (watchdog_loops >= watchdog_check_after):
-                test_watchdog = self.rigpump_watchdog()
+                test_watchdog = self.{{cookiecutter.driver_name}}_watchdog()
                 if not test_watchdog == watchdog or (time.time() - watchdog_send_timestamp) > WATCHDOG_SEND_PERIOD:
                     self.sendtodbDev(1, 'watchdog', test_watchdog, 0, '{{cookiecutter.driver_name}}')
                     watchdog = test_watchdog
