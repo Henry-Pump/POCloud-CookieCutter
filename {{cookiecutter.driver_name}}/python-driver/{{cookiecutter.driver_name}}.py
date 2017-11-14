@@ -2,10 +2,11 @@
 
 import threading
 from device_base import deviceBase
-from Channel import Channel, write_tag, BoolArrayChannels
+from Channel import Channel, read_tag, write_tag, BoolArrayChannels
 from Maps import {{cookiecutter.driver_name}}_map as maps
 from Maps import reverse_map
 import persistence
+from random import randint
 from utilities import get_public_ip_address
 import json
 import time
