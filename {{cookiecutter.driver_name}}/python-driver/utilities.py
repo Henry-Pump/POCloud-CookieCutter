@@ -1,5 +1,6 @@
 """Utility functions for the driver."""
 import socket
+import struct
 
 
 def get_public_ip_address():
@@ -9,6 +10,7 @@ def get_public_ip_address():
     ip = s.getsockname()[0]
     s.close()
     return ip
+
 
 def int_to_float16(int_to_convert):
     """Convert integer into float16 representation."""
@@ -20,6 +22,13 @@ def int_to_float16(int_to_convert):
 
     return sign * 2 ** (exponent - 15) * float("1.{}".format(fraction))
 
+
+def ints_to_float(int1, int2):
+    """Convert 2 registers into a floating point number."""
+    mypack = struct.pack('>HH', int1, int2)
+    f = struct.unpack('>f', mypack)
+    print("[{}, {}] >> {}".format(int1, int2, f[0]))
+    return f[0]
 
 
 def degf_to_degc(temp_f):

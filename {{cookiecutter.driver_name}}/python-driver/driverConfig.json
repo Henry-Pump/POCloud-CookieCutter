@@ -1,13 +1,12 @@
 {
-    "name": "{{cookiecutter.driver_name}}", 
-    "driverFilename": "{{cookiecutter.driver_name}}.py", 
-    "driverId": "0000", 
+    "name": "{{cookiecutter.driver_name}}",
+    "driverFilename": "{{cookiecutter.driver_name}}.py",
+    "driverId": "0000",
     "additionalDriverFiles": [
         "utilities.py",
         "persistence.py",
-        "Channel.py",
-        "Maps.py"
-    ], 
-    "version": 1, 
+        "Channel.py"
+    ],
+    "version": 1,
     "s3BucketName": "{{cookiecutter.driver_name}}"
 }
