@@ -15,12 +15,25 @@ def get_public_ip_address():
 def int_to_float16(int_to_convert):
     """Convert integer into float16 representation."""
     bin_rep = ('0' * 16 + '{0:b}'.format(int_to_convert))[-16:]
+    sign = 1.0
+    if int(bin_rep[0]) == 1:
+        sign = -1.0
+    exponent = float(int(bin_rep[1:6], 2))
+    if exponent == 30:
+        fraction = float(int("1" + bin_rep[7:17], 2))
+    else:
+        fraction = float(int(bin_rep[7:17], 2))
 
-    sign = -1 ** int(bin_rep[0])
-    exponent = int(bin_rep[1:6], 2)
-    fraction = int(bin_rep[7:17], 2)
-
-    return sign * 2 ** (exponent - 15) * float("1.{}".format(fraction))
+    if exponent == float(0b00000):
+        return sign * 2 ** -14 * fraction / (2.0 ** 10.0)
+    elif exponent == float(0b11111):
+        if fraction == 0:
+            return sign * float("inf")
+        else:
+            return float("NaN")
+    else:
+        frac_part = 1.0 + fraction / (2.0 ** 10.0)
+        return sign * (2 ** (exponent - 15)) * frac_part
 
 
 def ints_to_float(int1, int2):
