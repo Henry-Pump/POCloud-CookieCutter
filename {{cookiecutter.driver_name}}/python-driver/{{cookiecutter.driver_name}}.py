@@ -1,6 +1,7 @@
 """Driver for {{cookiecutter.driver_name}}"""
 
 import threading
+import sys
 from device_base import deviceBase
 from Channel import Channel, read_tag, write_tag, BoolArrayChannels
 from Maps import {{cookiecutter.driver_name}}_map as maps
@@ -10,8 +11,27 @@ from random import randint
 from utilities import get_public_ip_address
 import json
 import time
+import logging
 
 _ = None
+
+# LOGGING SETUP
+from logging.handlers import RotatingFileHandler
+
+log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
+logFile = './{{cookiecutter.driver_name}}.log'
+my_handler = RotatingFileHandler(logFile, mode='a', maxBytes=500*1024, backupCount=2, encoding=None, delay=0)
+my_handler.setFormatter(log_formatter)
+my_handler.setLevel(logging.INFO)
+logger = logging.getLogger('{{cookiecutter.driver_name}}')
+logger.setLevel(logging.INFO)
+logger.addHandler(my_handler)
+
+console_out = logging.StreamHandler(sys.stdout)
+console_out.setFormatter(log_formatter)
+logger.addHandler(console_out)
+
+logger.info("{{cookiecutter.driver_name}} startup")
 
 # GLOBAL VARIABLES
 WATCHDOG_SEND_PERIOD = 3600  # Seconds, the longest amount of time before sending the watchdog status
@@ -50,7 +70,7 @@ class start(threading.Thread, deviceBase):
         for i in range(0, wait_sec):
             print("{{cookiecutter.driver_name}} driver will start in {} seconds".format(wait_sec - i))
             time.sleep(1)
-        print("BOOM! Starting {{cookiecutter.driver_name}} driver...")
+        logger.info("BOOM! Starting {{cookiecutter.driver_name}} driver...")
 
         public_ip_address = get_public_ip_address()
         self.sendtodbDev(1, 'public_ip_address', public_ip_address, 0, '{{cookiecutter.driver_name}}')
@@ -63,7 +83,7 @@ class start(threading.Thread, deviceBase):
         watchdog_check_after = 5000
         while True:
             if self.forceSend:
-                print "FORCE SEND: TRUE"
+                logger.warning("FORCE SEND: TRUE")
 
             for c in CHANNELS:
                 if c.read(self.forceSend):
@@ -73,7 +93,7 @@ class start(threading.Thread, deviceBase):
             # print("{{cookiecutter.driver_name}} driver still alive...")
             if self.forceSend:
                 if send_loops > 2:
-                    print("Turning off forceSend")
+                    logger.warning("Turning off forceSend")
                     self.forceSend = False
                     send_loops = 0
                 else:
