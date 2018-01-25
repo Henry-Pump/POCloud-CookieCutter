@@ -12,17 +12,18 @@ def binarray(intval):
     return bin_arr
 
 
-def read_tag(addr, tag):
+def read_tag(addr, tag, plc_type="CLX"):
     """Read a tag from the PLC."""
+    direct = plc_type == "Micro800"
     c = ClxDriver()
     try:
-        if c.open(addr):
+        if c.open(addr, direct_connection=direct):
             try:
                 v = c.read_tag(tag)
                 return v
-            except DataError:
+            except DataError as e:
                 c.close()
-                print("Data Error during readTag({}, {})".format(addr, tag))
+                print("Data Error during readTag({}, {}): {}".format(addr, tag, e))
     except CommError:
         # err = c.get_status()
         c.close()
@@ -35,10 +36,11 @@ def read_tag(addr, tag):
     return False
 
 
-def read_array(addr, tag, start, end):
+def read_array(addr, tag, start, end, plc_type="CLX"):
     """Read an array from the PLC."""
+    direct = plc_type == "Micro800"
     c = ClxDriver()
-    if c.open(addr):
+    if c.open(addr, direct_connection=direct):
         arr_vals = []
         try:
             for i in range(start, end):
@@ -61,12 +63,14 @@ def read_array(addr, tag, start, end):
         c.close()
 
 
-def write_tag(addr, tag, val):
+def write_tag(addr, tag, val, plc_type="CLX"):
     """Write a tag value to the PLC."""
+    direct = plc_type == "Micro800"
     c = ClxDriver()
-    if c.open(addr):
+    if c.open(addr, direct_connection=direct):
         try:
             cv = c.read_tag(tag)
+            print(cv)
             wt = c.write_tag(tag, val, cv[1])
             return wt
         except Exception:
