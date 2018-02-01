@@ -19,10 +19,7 @@ def int_to_float16(int_to_convert):
     if int(bin_rep[0]) == 1:
         sign = -1.0
     exponent = float(int(bin_rep[1:6], 2))
-    if exponent == 30:
-        fraction = float(int("1" + bin_rep[7:17], 2))
-    else:
-        fraction = float(int(bin_rep[7:17], 2))
+    fraction = float(int(bin_rep[6:17], 2))
 
     if exponent == float(0b00000):
         return sign * 2 ** -14 * fraction / (2.0 ** 10.0)
