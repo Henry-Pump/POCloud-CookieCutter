@@ -3,9 +3,7 @@
 import threading
 import sys
 from device_base import deviceBase
-from Channel import Channel, read_tag, write_tag, BoolArrayChannels
-from Maps import {{cookiecutter.driver_name}}_map as maps
-from Maps import reverse_map
+from Channel import Channel, read_tag, write_tag
 import persistence
 from random import randint
 from utilities import get_public_ip_address
@@ -86,7 +84,8 @@ class start(threading.Thread, deviceBase):
                 logger.warning("FORCE SEND: TRUE")
 
             for c in CHANNELS:
-                if c.read(self.forceSend):
+                v = c.read()
+                if c.check(self.forceSend):
                     self.sendtodbDev(1, c.mesh_name, c.value, 0, '{{cookiecutter.driver_name}}')
 
 

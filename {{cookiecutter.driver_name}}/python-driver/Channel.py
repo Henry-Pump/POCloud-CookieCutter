@@ -192,7 +192,7 @@ class ModbusChannel(Channel):
 class PLCChannel(Channel):
     """PLC Channel Object."""
 
-    def __init__(self, ip, mesh_name, plc_tag, data_type, chg_threshold, guarantee_sec, map_=False, write_enabled=False):
+    def __init__(self, ip, mesh_name, plc_tag, data_type, chg_threshold, guarantee_sec, map_=False, write_enabled=False, plc_type='CLX'):
         """Initialize the channel."""
         super(PLCChannel, self).__init__(mesh_name, data_type, chg_threshold, guarantee_sec, map_, write_enabled)
         self.plc_ip = ip
@@ -206,12 +206,13 @@ class PLCChannel(Channel):
         self.guarantee_sec = guarantee_sec
         self.map_ = map_
         self.write_enabled = write_enabled
+        self.plc_type = plc_type
 
     def read(self):
         """Read the value."""
         plc_value = None
         if self.plc_tag and self.plc_ip:
-            read_value = read_tag(self.plc_ip, self.plc_tag)
+            read_value = read_tag(self.plc_ip, self.plc_tag, plc_type=self.plc_type)
             if read_value:
                 plc_value = read_value[0]
 
