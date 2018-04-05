@@ -1,0 +1,2 @@
+class deviceBase(object):
+    pass
