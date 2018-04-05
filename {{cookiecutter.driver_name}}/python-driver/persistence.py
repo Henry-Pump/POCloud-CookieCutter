@@ -16,6 +16,6 @@ def store(persist_obj, filename="persist.json"):
     """Store the persisting settings into the specified file."""
     try:
         with open(filename, 'w') as persist_file:
-            return json.dump(persist_obj, persist_file)
+            return json.dump(persist_obj, persist_file, indent=4)
     except Exception:
         return False
