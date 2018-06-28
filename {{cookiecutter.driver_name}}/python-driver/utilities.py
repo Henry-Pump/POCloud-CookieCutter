@@ -5,11 +5,11 @@ import struct
 
 def get_public_ip_address():
     """Find the public IP Address of the host device."""
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect(("8.8.8.8", 80))
-    ip = s.getsockname()[0]
-    s.close()
-    return ip
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.connect(("8.8.8.8", 80))
+    ip_address = sock.getsockname()[0]
+    sock.close()
+    return ip_address
 
 
 def int_to_float16(int_to_convert):
@@ -26,19 +26,17 @@ def int_to_float16(int_to_convert):
     elif exponent == float(0b11111):
         if fraction == 0:
             return sign * float("inf")
-        else:
-            return float("NaN")
-    else:
-        frac_part = 1.0 + fraction / (2.0 ** 10.0)
-        return sign * (2 ** (exponent - 15)) * frac_part
+        return float("NaN")
+    frac_part = 1.0 + fraction / (2.0 ** 10.0)
+    return sign * (2 ** (exponent - 15)) * frac_part
 
 
 def ints_to_float(int1, int2):
     """Convert 2 registers into a floating point number."""
     mypack = struct.pack('>HH', int1, int2)
-    f = struct.unpack('>f', mypack)
-    print("[{}, {}] >> {}".format(int1, int2, f[0]))
-    return f[0]
+    f_unpacked = struct.unpack('>f', mypack)
+    print("[{}, {}] >> {}".format(int1, int2, f_unpacked[0]))
+    return f_unpacked[0]
 
 
 def degf_to_degc(temp_f):
