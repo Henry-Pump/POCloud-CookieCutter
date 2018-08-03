@@ -1,8 +1,12 @@
 """Define Meshify channel class."""
+import time
 from pycomm.ab_comm.clx import Driver as ClxDriver
 from pycomm.cip.cip_base import CommError, DataError
-import time
+from file_logger import filelogger as log
 
+
+
+TAG_DATAERROR_SLEEPTIME = 5
 
 def binarray(intval):
     """Split an integer into its bits."""
@@ -15,70 +19,71 @@ def binarray(intval):
 def read_tag(addr, tag, plc_type="CLX"):
     """Read a tag from the PLC."""
     direct = plc_type == "Micro800"
-    c = ClxDriver()
+    clx = ClxDriver()
     try:
-        if c.open(addr, direct_connection=direct):
+        if clx.open(addr, direct_connection=direct):
             try:
-                v = c.read_tag(tag)
-                return v
-            except DataError as e:
-                c.close()
-                print("Data Error during readTag({}, {}): {}".format(addr, tag, e))
+                val = clx.read_tag(tag)
+                return val
+            except DataError as err:
+                clx.close()
+                time.sleep(TAG_DATAERROR_SLEEPTIME)
+                log.error("Data Error during readTag({}, {}): {}".format(addr, tag, err))
     except CommError:
         # err = c.get_status()
-        c.close()
-        print("Could not connect during readTag({}, {})".format(addr, tag))
-        # print err
-    except AttributeError as e:
-        c.close()
-        print("AttributeError during readTag({}, {}): \n{}".format(addr, tag, e))
-    c.close()
+        clx.close()
+        log.error("Could not connect during readTag({}, {})".format(addr, tag))
+    except AttributeError as err:
+        clx.close()
+        log.error("AttributeError during readTag({}, {}): \n{}".format(addr, tag, err))
+    clx.close()
     return False
 
 
 def read_array(addr, tag, start, end, plc_type="CLX"):
     """Read an array from the PLC."""
     direct = plc_type == "Micro800"
-    c = ClxDriver()
-    if c.open(addr, direct_connection=direct):
+    clx = ClxDriver()
+    if clx.open(addr, direct_connection=direct):
         arr_vals = []
         try:
             for i in range(start, end):
                 tag_w_index = tag + "[{}]".format(i)
-                v = c.read_tag(tag_w_index)
-                # print('{} - {}'.format(tag_w_index, v))
-                arr_vals.append(round(v[0], 4))
-            # print(v)
-            if len(arr_vals) > 0:
+                val = clx.read_tag(tag_w_index)
+                arr_vals.append(round(val[0], 4))
+            if arr_vals:
                 return arr_vals
             else:
-                print("No length for {}".format(addr))
+                log.error("No length for {}".format(addr))
                 return False
         except Exception:
-            print("Error during readArray({}, {}, {}, {})".format(addr, tag, start, end))
-            err = c.get_status()
-            c.close()
-            print err
-            pass
-        c.close()
+            log.error("Error during readArray({}, {}, {}, {})".format(addr, tag, start, end))
+            err = clx.get_status()
+            clx.close()
+            log.error(err)
+        clx.close()
 
 
 def write_tag(addr, tag, val, plc_type="CLX"):
     """Write a tag value to the PLC."""
     direct = plc_type == "Micro800"
-    c = ClxDriver()
-    if c.open(addr, direct_connection=direct):
-        try:
-            cv = c.read_tag(tag)
-            print(cv)
-            wt = c.write_tag(tag, val, cv[1])
-            return wt
-        except Exception:
-            print("Error during writeTag({}, {}, {})".format(addr, tag, val))
-            err = c.get_status()
-            c.close()
-            print err
-        c.close()
+    clx = ClxDriver()
+    try:
+        if clx.open(addr, direct_connection=direct):
+            try:
+                initial_val = clx.read_tag(tag)
+                write_status = clx.write_tag(tag, val, initial_val[1])
+                return write_status
+            except DataError as err:
+                clx_err = clx.get_status()
+                clx.close()
+                log.error("--\nDataError during writeTag({}, {}, {}, plc_type={}) -- {}\n{}\n".format(addr, tag, val, plc_type, err, clx_err))
+
+    except CommError as err:
+        clx_err = clx.get_status()
+        log.error("--\nCommError during write_tag({}, {}, {}, plc_type={})\n{}\n--".format(addr, tag, val, plc_type, err))
+        clx.close()
+    return False
 
 
 class Channel(object):
@@ -111,7 +116,7 @@ class Channel(object):
             elif self.value is None:
                 send_needed = True
                 send_reason = "no value"
-            elif not (self.value == new_value):
+            elif self.value != new_value:
                 if self.map_:
                     if not self.value == self.map_[new_value]:
                         send_needed = True
@@ -147,12 +152,12 @@ class Channel(object):
                 try:
                     self.value = self.map_[new_value]
                 except KeyError:
-                    print("Cannot find a map value for {} in {} for {}".format(new_value, self.map_, self.mesh_name))
+                    log.error("Cannot find a map value for {} in {} for {}".format(new_value, self.map_, self.mesh_name))
                     self.value = new_value
             else:
                 self.value = new_value
             self.last_send_time = time.time()
-            print("Sending {} for {} - {}".format(self.value, self.mesh_name, send_reason))
+            log.info("Sending {} for {} - {}".format(self.value, self.mesh_name, send_reason))
         return send_needed
 
     def read(self):
@@ -168,7 +173,7 @@ def identity(sent):
 class ModbusChannel(Channel):
     """Modbus channel object."""
 
-    def __init__(self, mesh_name, register_number, data_type, chg_threshold, guarantee_sec, channel_size=1, map_=False, write_enabled=False, transformFn=identity):
+    def __init__(self, mesh_name, register_number, data_type, chg_threshold, guarantee_sec, channel_size=1, map_=False, write_enabled=False, transform_fn=identity):
         """Initialize the channel."""
         super(ModbusChannel, self).__init__(mesh_name, data_type, chg_threshold, guarantee_sec, map_, write_enabled)
         self.mesh_name = mesh_name
@@ -182,11 +187,11 @@ class ModbusChannel(Channel):
         self.guarantee_sec = guarantee_sec
         self.map_ = map_
         self.write_enabled = write_enabled
-        self.transformFn = transformFn
+        self.transform_fn = transform_fn
 
     def read(self, mbsvalue):
         """Return the transformed read value."""
-        return self.transformFn(mbsvalue)
+        return self.transform_fn(mbsvalue)
 
 
 class PLCChannel(Channel):
@@ -224,6 +229,7 @@ class BoolArrayChannels(Channel):
 
     def __init__(self, ip, mesh_name, plc_tag, data_type, chg_threshold, guarantee_sec, map_=False, write_enabled=False):
         """Initialize the channel."""
+        super(BoolArrayChannels, self).__init__(mesh_name, data_type, chg_threshold, guarantee_sec, map_, write_enabled)
         self.plc_ip = ip
         self.mesh_name = mesh_name
         self.plc_tag = plc_tag
@@ -244,7 +250,7 @@ class BoolArrayChannels(Channel):
                 if new_val_dict[idx] != self.last_value[idx]:
                     send = True
             except KeyError:
-                print("Key Error in self.compare_values for index {}".format(idx))
+                log.error("Key Error in self.compare_values for index {}".format(idx))
                 send = True
         return send
 
@@ -253,15 +259,15 @@ class BoolArrayChannels(Channel):
         send_needed = False
         send_reason = ""
         if self.plc_tag:
-            v = read_tag(self.plc_ip, self.plc_tag)
-            if v:
-                bool_arr = binarray(v[0])
+            val = read_tag(self.plc_ip, self.plc_tag)
+            if val:
+                bool_arr = binarray(val[0])
                 new_val = {}
                 for idx in self.map_:
                     try:
                         new_val[self.map_[idx]] = bool_arr[idx]
                     except KeyError:
-                        print("Not able to get value for index {}".format(idx))
+                        log.error("Not able to get value for index {}".format(idx))
 
                 if self.last_send_time == 0:
                     send_needed = True
@@ -283,5 +289,5 @@ class BoolArrayChannels(Channel):
                     self.value = new_val
                     self.last_value = self.value
                     self.last_send_time = time.time()
-                    print("Sending {} for {} - {}".format(self.value, self.mesh_name, send_reason))
+                    log.info("Sending {} for {} - {}".format(self.value, self.mesh_name, send_reason))
         return send_needed

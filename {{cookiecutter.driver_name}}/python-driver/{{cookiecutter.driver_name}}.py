@@ -1,45 +1,31 @@
 """Driver for {{cookiecutter.driver_name}}"""
 
 import threading
-import sys
 import json
 import time
-import logging
 from random import randint
 
 from device_base import deviceBase
-from Channel import Channel, read_tag, write_tag
+from channel import Channel, read_tag, write_tag
 import persistence
 from utilities import get_public_ip_address
+from file_logger import filelogger as log
 
 _ = None
 
-# LOGGING SETUP
-from logging.handlers import RotatingFileHandler
-
-log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(funcName)s(%(lineno)d) %(message)s')
-logFile = './{{cookiecutter.driver_name}}.log'
-my_handler = RotatingFileHandler(logFile, mode='a', maxBytes=500*1024,
-                                 backupCount=2, encoding=None, delay=0)
-my_handler.setFormatter(log_formatter)
-my_handler.setLevel(logging.INFO)
-logger = logging.getLogger('{{cookiecutter.driver_name}}')
-logger.setLevel(logging.INFO)
-logger.addHandler(my_handler)
-
-console_out = logging.StreamHandler(sys.stdout)
-console_out.setFormatter(log_formatter)
-logger.addHandler(console_out)
-
-logger.info("{{cookiecutter.driver_name}} startup")
+log.info("{{cookiecutter.driver_name}} startup")
 
 # GLOBAL VARIABLES
+WAIT_FOR_CONNECTION_SECONDS = 60
+IP_CHECK_PERIOD = 60
+WATCHDOG_ENABLE = True
+WATCHDOG_CHECK_PERIOD = 60
 WATCHDOG_SEND_PERIOD = 3600  # Seconds, the longest amount of time before sending the watchdog status
 PLC_IP_ADDRESS = "192.168.1.10"
 CHANNELS = []
 
 # PERSISTENCE FILE
-persist = persistence.load()
+PERSIST = persistence.load()
 
 
 class start(threading.Thread, deviceBase):
@@ -57,6 +43,11 @@ class start(threading.Thread, deviceBase):
         self.version = "1"
         self.finished = threading.Event()
         self.force_send = False
+        self.public_ip_address = ""
+        self.public_ip_address_last_checked = 0
+        self.watchdog = False
+        self.watchdog_last_checked = 0
+        self.watchdog_last_sent = 0
         threading.Thread.start(self)
 
     # this is a required function for all drivers, its goal is to upload some piece of data
@@ -68,53 +59,62 @@ class start(threading.Thread, deviceBase):
 
     def run(self):
         """Actually run the driver."""
-        global persist
-        wait_sec = 60
-        for i in range(0, wait_sec):
-            print("{{cookiecutter.driver_name}} driver will start in {} seconds".format(wait_sec - i))
+        for i in range(0, WAIT_FOR_CONNECTION_SECONDS):
+            print("{{cookiecutter.driver_name}} driver will start in {} seconds".format(WAIT_FOR_CONNECTION_SECONDS - i))
             time.sleep(1)
-        logger.info("BOOM! Starting {{cookiecutter.driver_name}} driver...")
+        log.info("BOOM! Starting {{cookiecutter.driver_name}} driver...")
 
-        public_ip_address = get_public_ip_address()
-        self.sendtodbDev(1, 'public_ip_address', public_ip_address, 0, '{{cookiecutter.driver_name}}')
-        watchdog = self.{{cookiecutter.driver_name}}_watchdog()
-        self.sendtodbDev(1, 'watchdog', watchdog, 0, '{{cookiecutter.driver_name}}')
-        watchdog_send_timestamp = time.time()
+        self._check_watchdog()
+        self._check_ip_address()
+
+        self.nodes["{{cookiecutter.driver_name}}_0199"] = self
 
         send_loops = 0
-        watchdog_loops = 0
-        watchdog_check_after = 5000
+
         while True:
+            now = time.time()
             if self.force_send:
-                logger.warning("FORCE SEND: TRUE")
+                log.warning("FORCE SEND: TRUE")
 
-            for c in CHANNELS:
-                v = c.read()
-                if c.check(self.force_send):
-                    self.sendtodbDev(1, c.mesh_name, c.value, 0, '{{cookiecutter.driver_name}}')
-
+            for chan in CHANNELS:
+                val = chan.read()
+                if chan.check(val, self.force_send):
+                    self.sendtodbDev(1, chan.mesh_name, chan.value, 0, '{{cookiecutter.driver_name}}')
 
             # print("{{cookiecutter.driver_name}} driver still alive...")
             if self.force_send:
                 if send_loops > 2:
-                    logger.warning("Turning off force_send")
+                    log.warning("Turning off force_send")
                     self.force_send = False
                     send_loops = 0
                 else:
                     send_loops += 1
 
-            watchdog_loops += 1
-            if (watchdog_loops >= watchdog_check_after):
-                test_watchdog = self.{{cookiecutter.driver_name}}_watchdog()
-                if not test_watchdog == watchdog or (time.time() - watchdog_send_timestamp) > WATCHDOG_SEND_PERIOD:
-                    self.sendtodbDev(1, 'watchdog', test_watchdog, 0, '{{cookiecutter.driver_name}}')
-                    watchdog = test_watchdog
+            if WATCHDOG_ENABLE:
+                if (now - self.watchdog_last_checked) > WATCHDOG_CHECK_PERIOD:
+                    self._check_watchdog()
 
-                test_public_ip = get_public_ip_address()
-                if not test_public_ip == public_ip_address:
-                    self.sendtodbDev(1, 'public_ip_address', test_public_ip, 0, '{{cookiecutter.driver_name}}')
-                    public_ip_address = test_public_ip
-                watchdog_loops = 0
+            if (now - self.public_ip_address_last_checked) > IP_CHECK_PERIOD:
+                self._check_ip_address()
+
+    def _check_watchdog(self):
+        """Check the watchdog and send to Meshify if changed or stale."""
+        test_watchdog = self.{{cookiecutter.driver_name}}_watchdog()
+        now = time.time()
+        self.watchdog_last_checked = now
+        if test_watchdog != self.watchdog or (now - self.watchdog_last_sent) > WATCHDOG_SEND_PERIOD:
+            self.sendtodbDev(1, 'watchdog', test_watchdog, 0, '{{cookiecutter.driver_name}}')
+            self.watchdog = test_watchdog
+            self.watchdog_last_sent = now
+
+
+    def _check_ip_address(self):
+        """Check the public IP address and send to Meshify if changed."""
+        self.public_ip_address_last_checked = time.time()
+        test_public_ip = get_public_ip_address()
+        if not test_public_ip == self.public_ip_address:
+            self.sendtodbDev(1, 'public_ip_address', test_public_ip, 0, '{{cookiecutter.driver_name}}')
+            self.public_ip_address = test_public_ip
 
     def {{cookiecutter.driver_name}}_watchdog(self):
         """Write a random integer to the PLC and then 1 seconds later check that it has been decremented by 1."""
@@ -138,8 +138,8 @@ class start(threading.Thread, deviceBase):
         new_val = json.loads(str(value).replace("'", '"'))
         tag_n = str(new_val['tag'])  # "cmd_Start"
         val_n = new_val['val']
-        w = write_tag(str(PLC_IP_ADDRESS), tag_n, val_n)
-        print("Result of {{cookiecutter.driver_name}}_writeplctag(self, {}, {}) = {}".format(name, value, w))
-        if w is None:
-            w = "Error writing to PLC..."
-        return w
+        write_res = write_tag(str(PLC_IP_ADDRESS), tag_n, val_n)
+        print("Result of {{cookiecutter.driver_name}}_writeplctag(self, {}, {}) = {}".format(name, value, write_res))
+        if write_res is None:
+            write_res = "Error writing to PLC..."
+        return write_res

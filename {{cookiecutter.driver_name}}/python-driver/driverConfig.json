@@ -5,7 +5,8 @@
     "additionalDriverFiles": [
         "utilities.py",
         "persistence.py",
-        "Channel.py"
+        "channel.py",
+        "logger.py"
     ],
     "version": 1,
     "s3BucketName": "{{cookiecutter.driver_name}}"
